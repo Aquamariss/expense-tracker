@@ -51,7 +51,7 @@ export default function ExpenseList({ expenses, onDelete }: Props) {
 
           {/* Amount */}
           <span className="text-base font-semibold text-gray-900 shrink-0">
-            {formatAmount(expense.amount)} ₽
+            {formatAmount(expense.amount)} €
           </span>
 
           {/* Delete */}

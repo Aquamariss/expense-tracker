@@ -52,7 +52,7 @@ export default function ExpenseForm({ categories, onAdd }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Amount */}
         <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-600">Сумма (₽)</label>
+          <label className="text-sm font-medium text-gray-600">Сумма (€)</label>
           <input
             type="text"
             inputMode="decimal"

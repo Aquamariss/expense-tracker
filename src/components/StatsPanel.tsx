@@ -87,14 +87,14 @@ export default function StatsPanel({ expenses }: Props) {
         </svg>
 
         <p className="text-indigo-200 text-sm capitalize">{monthName}</p>
-        <p className="text-3xl font-bold mt-1">{fmt(monthTotal)} ₽</p>
+        <p className="text-3xl font-bold mt-1">{fmt(monthTotal)} €</p>
         <p className="text-indigo-200 text-xs mt-1">расходов в этом месяце</p>
       </div>
 
       {/* All time */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4 flex items-center justify-between">
         <span className="text-sm text-gray-500">Всего за всё время</span>
-        <span className="font-semibold text-gray-900">{fmt(grandTotal)} ₽</span>
+        <span className="font-semibold text-gray-900">{fmt(grandTotal)} €</span>
       </div>
 
       {/* By category */}
@@ -113,7 +113,7 @@ export default function StatsPanel({ expenses }: Props) {
                       {cat}
                     </span>
                     <span className="text-sm font-semibold text-gray-800 shrink-0">
-                      {fmt(total)} ₽
+                      {fmt(total)} €
                     </span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
