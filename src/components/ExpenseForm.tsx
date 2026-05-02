@@ -5,14 +5,16 @@ import type { Expense } from "@/lib/types";
 
 interface Props {
   categories: string[];
+  sources: string[];
   onAdd: (expense: Omit<Expense, "id">) => void;
 }
 
-export default function ExpenseForm({ categories, onAdd }: Props) {
+export default function ExpenseForm({ categories, sources, onAdd }: Props) {
   const today = new Date().toISOString().split("T")[0] as string;
 
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState(categories[0] ?? "");
+  const [source, setSource] = useState(sources[0] ?? "Банковские карты");
   const [date, setDate] = useState(today);
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
@@ -32,6 +34,7 @@ export default function ExpenseForm({ categories, onAdd }: Props) {
     onAdd({
       amount: parsed,
       category: category || (categories[0] ?? ""),
+      source: source || (sources[0] ?? "Банковские карты"),
       date,
       description: description.trim(),
     });
@@ -39,6 +42,7 @@ export default function ExpenseForm({ categories, onAdd }: Props) {
     setDescription("");
     setDate(today);
     setCategory(categories[0] ?? "");
+    setSource(sources[0] ?? "Банковские карты");
   }
 
   return (
@@ -74,7 +78,7 @@ export default function ExpenseForm({ categories, onAdd }: Props) {
         </div>
 
         {/* Category */}
-        <div className="space-y-1 sm:col-span-2">
+        <div className="space-y-1">
           <label className="text-sm font-medium text-gray-600">Категория</label>
           <select
             value={category}
@@ -83,6 +87,20 @@ export default function ExpenseForm({ categories, onAdd }: Props) {
           >
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Source */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-600">Источник средств</label>
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition bg-white"
+          >
+            {sources.map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
         </div>

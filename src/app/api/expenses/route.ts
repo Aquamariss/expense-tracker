@@ -18,9 +18,10 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { amount, category, date, description } = await req.json() as {
+  const { amount, category, source, date, description } = await req.json() as {
     amount: number;
     category: string;
+    source?: string;
     date: string;
     description?: string;
   };
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     data: {
       amount,
       category,
+      source: source ?? "Банковские карты",
       date,
       description: description ?? "",
       userId: session.user.id,

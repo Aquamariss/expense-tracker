@@ -8,6 +8,7 @@ import ExpenseList from "./ExpenseList";
 import CategoryFilter from "./CategoryFilter";
 import StatsPanel from "./StatsPanel";
 import CategoryManager from "./CategoryManager";
+import SourceManager from "./SourceManager";
 
 type SortKey = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
 
@@ -18,7 +19,7 @@ const SORT_LABELS: Record<SortKey, string> = {
   amount_asc: "По сумме ↑",
 };
 
-interface ApiCategory { id: string; name: string; }
+interface ApiItem { id: string; name: string; }
 
 /* ── SVG icons ── */
 function AnchorIcon({ className }: { className?: string }) {
@@ -41,6 +42,15 @@ function CompassIcon({ className }: { className?: string }) {
   );
 }
 
+function CardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <path d="M2 10h20"/>
+    </svg>
+  );
+}
+
 function WaveBackground() {
   return (
     <svg
@@ -48,7 +58,6 @@ function WaveBackground() {
       viewBox="0 0 1200 160"
       preserveAspectRatio="none"
       fill="none"
-      xmlns="http://www.w3.org/2000/svg"
     >
       <path d="M0,80 C200,40 400,110 600,80 C800,50 1000,110 1200,80" stroke="#818cf8" strokeWidth="2" opacity="0.10" />
       <path d="M0,100 C150,70 350,120 550,95 C750,70 950,115 1200,95" stroke="#818cf8" strokeWidth="1.5" opacity="0.07" />
@@ -58,28 +67,25 @@ function WaveBackground() {
   );
 }
 
-/* ── Main component ── */
 export default function ExpenseTracker() {
   const { data: session, status } = useSession();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [apiCategories, setApiCategories] = useState<ApiCategory[]>([]);
+  const [apiCategories, setApiCategories] = useState<ApiItem[]>([]);
+  const [apiSources, setApiSources] = useState<ApiItem[]>([]);
   const [filter, setFilter] = useState<string>("Все");
   const [sort, setSort] = useState<SortKey>("date_desc");
   const [showForm, setShowForm] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showSourceManager, setShowSourceManager] = useState(false);
 
   const categories = useMemo(() => apiCategories.map((c) => c.name), [apiCategories]);
+  const sources = useMemo(() => apiSources.map((s) => s.name), [apiSources]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetch("/api/expenses")
-      .then((r) => r.json())
-      .then(setExpenses)
-      .catch(console.error);
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then(setApiCategories)
-      .catch(console.error);
+    fetch("/api/expenses").then((r) => r.json()).then(setExpenses).catch(console.error);
+    fetch("/api/categories").then((r) => r.json()).then(setApiCategories).catch(console.error);
+    fetch("/api/sources").then((r) => r.json()).then(setApiSources).catch(console.error);
   }, [status]);
 
   /* ── Expense handlers ── */
@@ -106,7 +112,7 @@ export default function ExpenseTracker() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
-    const cat: ApiCategory = await res.json();
+    const cat: ApiItem = await res.json();
     setApiCategories((prev) => [...prev, cat]);
   }
 
@@ -129,6 +135,36 @@ export default function ExpenseTracker() {
     await fetch(`/api/categories/${cat.id}`, { method: "DELETE" });
     if (filter === name) setFilter("Все");
     setApiCategories((prev) => prev.filter((c) => c.id !== cat.id));
+  }
+
+  /* ── Source handlers ── */
+  async function handleAddSource(name: string) {
+    const res = await fetch("/api/sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const src: ApiItem = await res.json();
+    setApiSources((prev) => [...prev, src]);
+  }
+
+  async function handleRenameSource(oldName: string, newName: string) {
+    const src = apiSources.find((s) => s.name === oldName);
+    if (!src) return;
+    await fetch(`/api/sources/${src.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
+    setApiSources((prev) => prev.map((s) => s.id === src.id ? { ...s, name: newName } : s));
+    setExpenses((prev) => prev.map((e) => e.source === oldName ? { ...e, source: newName } : e));
+  }
+
+  async function handleDeleteSource(name: string) {
+    const src = apiSources.find((s) => s.name === name);
+    if (!src) return;
+    await fetch(`/api/sources/${src.id}`, { method: "DELETE" });
+    setApiSources((prev) => prev.filter((s) => s.id !== src.id));
   }
 
   /* ── Filtered & sorted list ── */
@@ -181,7 +217,15 @@ export default function ExpenseTracker() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {/* Category manager button */}
+            <button
+              onClick={() => setShowSourceManager(true)}
+              title="Источники средств"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
+            >
+              <CardIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Источники</span>
+            </button>
+
             <button
               onClick={() => setShowCategoryManager(true)}
               title="Управление категориями"
@@ -191,7 +235,6 @@ export default function ExpenseTracker() {
               <span className="hidden sm:inline">Категории</span>
             </button>
 
-            {/* Add button */}
             <button
               onClick={() => setShowForm((v) => !v)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors duration-150 ${
@@ -215,7 +258,6 @@ export default function ExpenseTracker() {
               )}
             </button>
 
-            {/* Sign out */}
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               title="Выйти"
@@ -230,7 +272,6 @@ export default function ExpenseTracker() {
           </div>
         </div>
 
-        {/* Wavy bottom border */}
         <div className="relative h-3 overflow-hidden -mt-px">
           <svg viewBox="0 0 1200 12" preserveAspectRatio="none" className="absolute w-full h-full" fill="none">
             <path d="M0,6 C150,12 300,0 450,6 C600,12 750,0 900,6 C1050,12 1150,2 1200,6 L1200,12 L0,12 Z" fill="white" fillOpacity="0.8"/>
@@ -239,34 +280,24 @@ export default function ExpenseTracker() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Form (animated) */}
         <div
           className={`overflow-hidden transition-all duration-300 ${
             showForm
-              ? "max-h-[600px] opacity-100 pointer-events-auto"
+              ? "max-h-[700px] opacity-100 pointer-events-auto"
               : "max-h-0 opacity-0 pointer-events-none"
           }`}
         >
-          <ExpenseForm categories={categories} onAdd={handleAdd} />
+          <ExpenseForm categories={categories} sources={sources} onAdd={handleAdd} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: list + controls */}
           <div className="lg:col-span-2 space-y-4">
             <div className="space-y-3">
-              <CategoryFilter
-                categories={categories}
-                active={filter}
-                onChange={setFilter}
-              />
+              <CategoryFilter categories={categories} active={filter} onChange={setFilter} />
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">
                   {filtered.length}{" "}
-                  {filtered.length === 1
-                    ? "запись"
-                    : filtered.length < 5
-                    ? "записи"
-                    : "записей"}
+                  {filtered.length === 1 ? "запись" : filtered.length < 5 ? "записи" : "записей"}
                 </span>
                 <select
                   value={sort}
@@ -279,18 +310,15 @@ export default function ExpenseTracker() {
                 </select>
               </div>
             </div>
-
             <ExpenseList expenses={filtered} onDelete={handleDelete} />
           </div>
 
-          {/* Right: stats */}
           <aside>
             <StatsPanel expenses={expenses} />
           </aside>
         </div>
       </main>
 
-      {/* Category manager modal */}
       {showCategoryManager && (
         <CategoryManager
           categories={categories}
@@ -299,6 +327,17 @@ export default function ExpenseTracker() {
           onRename={handleRenameCategory}
           onDelete={handleDeleteCategory}
           onClose={() => setShowCategoryManager(false)}
+        />
+      )}
+
+      {showSourceManager && (
+        <SourceManager
+          sources={sources}
+          expenses={expenses}
+          onAdd={handleAddSource}
+          onRename={handleRenameSource}
+          onDelete={handleDeleteSource}
+          onClose={() => setShowSourceManager(false)}
         />
       )}
     </div>

@@ -42,11 +42,10 @@ export default function ExpenseList({ expenses, onDelete }: Props) {
             <p className="text-sm font-medium text-gray-800 truncate">
               {expense.category}
             </p>
-            {expense.description && (
-              <p className="text-xs text-gray-400 truncate mt-0.5">
-                {expense.description}
-              </p>
-            )}
+            <p className="text-xs text-gray-400 truncate mt-0.5">
+              {expense.source}
+              {expense.description ? ` · ${expense.description}` : ""}
+            </p>
           </div>
 
           {/* Amount */}

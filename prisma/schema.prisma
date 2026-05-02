@@ -7,18 +7,20 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  createdAt    DateTime   @default(now())
-  expenses     Expense[]
-  categories   Category[]
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  createdAt      DateTime        @default(now())
+  expenses       Expense[]
+  categories     Category[]
+  fundingSources FundingSource[]
 }
 
 model Expense {
   id          String   @id @default(cuid())
   amount      Float
   category    String
+  source      String   @default("Банковские карты")
   date        String
   description String   @default("")
   createdAt   DateTime @default(now())
@@ -27,6 +29,16 @@ model Expense {
 }
 
 model Category {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+model FundingSource {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())

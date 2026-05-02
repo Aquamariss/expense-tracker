@@ -12,12 +12,20 @@ export const DEFAULT_CATEGORIES = [
   "Другое",
 ] as const;
 
+export const DEFAULT_SOURCES = [
+  "Банковские карты",
+  "Наличные",
+  "Swile",
+  "Бонусы и кэшбек",
+] as const;
+
 export type Category = string;
 
 export interface Expense {
   id: string;
   amount: number;
   category: Category;
+  source: string;
   date: string; // YYYY-MM-DD
   description: string;
 }

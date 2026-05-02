@@ -19,6 +19,13 @@ const DEFAULT_CATEGORIES = [
   "Другое",
 ];
 
+const DEFAULT_SOURCES = [
+  "Банковские карты",
+  "Наличные",
+  "Swile",
+  "Бонусы и кэшбек",
+];
+
 async function main() {
   const email = "aquamariss@gmail.com";
   const passwordHash = await bcrypt.hash("TmpPassword123", 12);
@@ -38,8 +45,16 @@ async function main() {
       create: { name, userId: user.id },
     });
   }
-
   console.log(`Seeded ${DEFAULT_CATEGORIES.length} categories`);
+
+  for (const name of DEFAULT_SOURCES) {
+    await prisma.fundingSource.upsert({
+      where: { userId_name: { userId: user.id, name } },
+      update: {},
+      create: { name, userId: user.id },
+    });
+  }
+  console.log(`Seeded ${DEFAULT_SOURCES.length} funding sources`);
 }
 
 main()
