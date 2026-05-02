@@ -23,7 +23,7 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (result?.error) {
-      setError(`Ошибка: ${result.error}`);
+      setError("Неверный email или пароль");
     } else {
       router.push("/");
       router.refresh();

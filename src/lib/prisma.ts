@@ -1,17 +1,15 @@
+import dns from "dns";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-function makePrisma() {
-  // Strip sslmode from URL — pg v8 treats sslmode=require as verify-full
-  // which rejects Supabase's self-signed cert chain.
-  const connectionString = (process.env.DATABASE_URL ?? "").replace(
-    /([?&])sslmode=[^&]*/,
-    (_, sep) => sep === "?" ? "?" : ""
-  ).replace(/\?$/, "");
+// Render resolves Supabase hostname to IPv6 which it can't route outbound.
+// Force IPv4 so the pg pool connects via 0.0.0.0 instead of :::0.
+dns.setDefaultResultOrder("ipv4first");
 
+function makePrisma() {
   const pool = new Pool({
-    connectionString,
+    connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);
