@@ -3,8 +3,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 function makePrisma() {
+  // Strip sslmode from URL — pg v8 treats sslmode=require as verify-full
+  // which rejects Supabase's self-signed cert chain.
+  const connectionString = (process.env.DATABASE_URL ?? "").replace(
+    /([?&])sslmode=[^&]*/,
+    (_, sep) => sep === "?" ? "?" : ""
+  ).replace(/\?$/, "");
+
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);
