@@ -11,7 +11,7 @@ export async function GET() {
     where: { userId: session.user.id },
     orderBy: { createdAt: "asc" },
   });
-  return NextResponse.json(categories.map((c) => ({ id: c.id, name: c.name })));
+  return NextResponse.json(categories.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
 }
 
 export async function POST(req: Request) {
