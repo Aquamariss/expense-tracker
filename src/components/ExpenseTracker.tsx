@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { loadCategories, loadExpenses, saveCategories, saveExpenses } from "@/lib/storage";
+import { useSession, signOut } from "next-auth/react";
 import type { Expense } from "@/lib/types";
 import ExpenseForm from "./ExpenseForm";
 import ExpenseList from "./ExpenseList";
@@ -17,6 +17,8 @@ const SORT_LABELS: Record<SortKey, string> = {
   amount_desc: "По сумме ↓",
   amount_asc: "По сумме ↑",
 };
+
+interface ApiCategory { id: string; name: string; }
 
 /* ── SVG icons ── */
 function AnchorIcon({ className }: { className?: string }) {
@@ -39,7 +41,6 @@ function CompassIcon({ className }: { className?: string }) {
   );
 }
 
-/* ── Background wave lines ── */
 function WaveBackground() {
   return (
     <svg
@@ -59,59 +60,75 @@ function WaveBackground() {
 
 /* ── Main component ── */
 export default function ExpenseTracker() {
+  const { data: session, status } = useSession();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [apiCategories, setApiCategories] = useState<ApiCategory[]>([]);
   const [filter, setFilter] = useState<string>("Все");
   const [sort, setSort] = useState<SortKey>("date_desc");
   const [showForm, setShowForm] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [mounted, setMounted] = useState(false);
+
+  const categories = useMemo(() => apiCategories.map((c) => c.name), [apiCategories]);
 
   useEffect(() => {
-    setExpenses(loadExpenses());
-    setCategories(loadCategories());
-    setMounted(true);
-  }, []);
+    if (status !== "authenticated") return;
+    fetch("/api/expenses")
+      .then((r) => r.json())
+      .then(setExpenses)
+      .catch(console.error);
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then(setApiCategories)
+      .catch(console.error);
+  }, [status]);
 
   /* ── Expense handlers ── */
-  function handleAdd(expense: Expense) {
-    const next = [expense, ...expenses];
-    setExpenses(next);
-    saveExpenses(next);
+  async function handleAdd(data: Omit<Expense, "id">) {
+    const res = await fetch("/api/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const expense: Expense = await res.json();
+    setExpenses((prev) => [expense, ...prev]);
     setShowForm(false);
   }
 
-  function handleDelete(id: string) {
-    const next = expenses.filter((e) => e.id !== id);
-    setExpenses(next);
-    saveExpenses(next);
+  async function handleDelete(id: string) {
+    await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
 
   /* ── Category handlers ── */
-  function handleAddCategory(name: string) {
-    const next = [...categories, name];
-    setCategories(next);
-    saveCategories(next);
+  async function handleAddCategory(name: string) {
+    const res = await fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const cat: ApiCategory = await res.json();
+    setApiCategories((prev) => [...prev, cat]);
   }
 
-  function handleRenameCategory(oldName: string, newName: string) {
-    const nextCategories = categories.map((c) => (c === oldName ? newName : c));
-    const nextExpenses = expenses.map((e) =>
-      e.category === oldName ? { ...e, category: newName } : e
-    );
+  async function handleRenameCategory(oldName: string, newName: string) {
+    const cat = apiCategories.find((c) => c.name === oldName);
+    if (!cat) return;
+    await fetch(`/api/categories/${cat.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
     if (filter === oldName) setFilter(newName);
-    setCategories(nextCategories);
-    setExpenses(nextExpenses);
-    saveCategories(nextCategories);
-    saveExpenses(nextExpenses);
+    setApiCategories((prev) => prev.map((c) => c.id === cat.id ? { ...c, name: newName } : c));
+    setExpenses((prev) => prev.map((e) => e.category === oldName ? { ...e, category: newName } : e));
   }
 
-  function handleDeleteCategory(name: string) {
-    if (expenses.some((e) => e.category === name)) return;
-    const next = categories.filter((c) => c !== name);
+  async function handleDeleteCategory(name: string) {
+    const cat = apiCategories.find((c) => c.name === name);
+    if (!cat) return;
+    await fetch(`/api/categories/${cat.id}`, { method: "DELETE" });
     if (filter === name) setFilter("Все");
-    setCategories(next);
-    saveCategories(next);
+    setApiCategories((prev) => prev.filter((c) => c.id !== cat.id));
   }
 
   /* ── Filtered & sorted list ── */
@@ -127,7 +144,7 @@ export default function ExpenseTracker() {
     });
   }, [expenses, filter, sort]);
 
-  if (!mounted) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-400">
         Загрузка…
@@ -139,7 +156,6 @@ export default function ExpenseTracker() {
     <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #f0f2ff 0%, #f9fafb 40%, #ffffff 100%)" }}>
       {/* ── Header ── */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-indigo-100/60 sticky top-0 z-10 overflow-hidden">
-        {/* Wave decoration behind header content */}
         <div className="absolute inset-0 pointer-events-none">
           <WaveBackground />
         </div>
@@ -147,7 +163,6 @@ export default function ExpenseTracker() {
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           {/* Logo / title */}
           <div className="flex items-center gap-3">
-            {/* Shell / wave icon */}
             <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
               <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round">
                 <path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9" />
@@ -158,7 +173,9 @@ export default function ExpenseTracker() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900 leading-tight">Трекер расходов</h1>
-              <p className="text-xs text-indigo-400 mt-0">Учёт личных трат</p>
+              <p className="text-xs text-indigo-400 mt-0">
+                {session?.user?.email ?? "Учёт личных трат"}
+              </p>
             </div>
           </div>
 
@@ -196,6 +213,19 @@ export default function ExpenseTracker() {
                   Добавить
                 </>
               )}
+            </button>
+
+            {/* Sign out */}
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              title="Выйти"
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-50 transition-colors duration-150"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
             </button>
           </div>
         </div>

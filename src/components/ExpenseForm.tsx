@@ -5,7 +5,7 @@ import type { Expense } from "@/lib/types";
 
 interface Props {
   categories: string[];
-  onAdd: (expense: Expense) => void;
+  onAdd: (expense: Omit<Expense, "id">) => void;
 }
 
 export default function ExpenseForm({ categories, onAdd }: Props) {
@@ -30,7 +30,6 @@ export default function ExpenseForm({ categories, onAdd }: Props) {
     }
     setError("");
     onAdd({
-      id: crypto.randomUUID(),
       amount: parsed,
       category: category || (categories[0] ?? ""),
       date,
