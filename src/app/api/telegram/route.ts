@@ -10,11 +10,13 @@ const OWNER_EMAIL = process.env.TELEGRAM_OWNER_EMAIL!;
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function sendMessage(chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text }),
   });
+  const data = await res.json();
+  console.log("[telegram] sendMessage result:", JSON.stringify(data));
 }
 
 interface AddExpenseCmd {
@@ -67,12 +69,27 @@ async function parseCommand(text: string): Promise<ParsedCmd> {
     ],
   });
 
-  return JSON.parse(response.choices[0].message.content!) as ParsedCmd;
+  const parsed = JSON.parse(response.choices[0].message.content!) as ParsedCmd;
+  console.log("[telegram] parseCommand result:", JSON.stringify(parsed));
+  return parsed;
+}
+
+export async function GET() {
+  const res = await fetch(
+    `https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`
+  );
+  const data = await res.json();
+  return NextResponse.json(data);
 }
 
 export async function POST(req: Request) {
+  console.log("[telegram] POST received");
+
   const secret = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
+  console.log("[telegram] secret header:", secret ? "present" : "absent", "| expected:", WEBHOOK_SECRET ? "set" : "not set");
+
   if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
+    console.log("[telegram] secret mismatch, rejecting");
     return new NextResponse("Forbidden", { status: 403 });
   }
 
@@ -84,12 +101,22 @@ export async function POST(req: Request) {
     };
   };
 
+  console.log("[telegram] update:", JSON.stringify(update));
+
   const message = update?.message;
-  if (!message?.text || message.from?.id !== OWNER_ID) {
+  if (!message?.text) {
+    console.log("[telegram] no text, ignoring");
+    return NextResponse.json({ ok: true });
+  }
+
+  console.log("[telegram] from.id:", message.from?.id, "| OWNER_ID:", OWNER_ID);
+  if (message.from?.id !== OWNER_ID) {
+    console.log("[telegram] not owner, ignoring");
     return NextResponse.json({ ok: true });
   }
 
   const chatId = message.chat.id;
+  console.log("[telegram] processing message:", message.text);
 
   try {
     const cmd = await parseCommand(message.text);
@@ -169,7 +196,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (e) {
-    console.error("Telegram bot error:", e);
+    console.error("[telegram] error:", e);
     await sendMessage(chatId, "❌ Произошла ошибка. Попробуйте ещё раз.");
   }
 
