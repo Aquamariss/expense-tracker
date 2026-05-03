@@ -1,0 +1,177 @@
+import { NextResponse } from "next/server";
+import OpenAI from "openai";
+import { prisma } from "@/lib/prisma";
+
+const OWNER_ID = Number(process.env.TELEGRAM_OWNER_ID);
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+const OWNER_EMAIL = process.env.TELEGRAM_OWNER_EMAIL!;
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+async function sendMessage(chatId: number, text: string) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  });
+}
+
+interface AddExpenseCmd {
+  action: "add_expense";
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+}
+interface DailySummaryCmd {
+  action: "daily_summary";
+  date: string;
+}
+interface MonthlySummaryCmd {
+  action: "monthly_summary";
+  year: number;
+  month: number;
+}
+interface UnknownCmd {
+  action: "unknown";
+}
+type ParsedCmd = AddExpenseCmd | DailySummaryCmd | MonthlySummaryCmd | UnknownCmd;
+
+async function parseCommand(text: string): Promise<ParsedCmd> {
+  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `Сегодня ${today}. Текущий месяц: ${currentYear}-${String(currentMonth).padStart(2, "0")}.
+Ты парсишь сообщения для трекера расходов на русском языке. Верни JSON одной из структур:
+1. {"action":"add_expense","amount":число,"category":"строка","description":"строка","date":"YYYY-MM-DD"}
+2. {"action":"daily_summary","date":"YYYY-MM-DD"}
+3. {"action":"monthly_summary","year":число,"month":число}
+4. {"action":"unknown"}
+
+Известные категории: Продукты, Кафе и рестораны, Транспорт, Развлечения, Одежда, Здоровье, Коммунальные услуги, Другое.
+Если категория не ясна — используй "Другое".
+Для daily_summary по умолчанию используй сегодняшнюю дату.
+Для monthly_summary по умолчанию используй текущий месяц.
+В description кратко опиши что куплено (пусто если не указано).`,
+      },
+      { role: "user", content: text },
+    ],
+  });
+
+  return JSON.parse(response.choices[0].message.content!) as ParsedCmd;
+}
+
+export async function POST(req: Request) {
+  const secret = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
+  if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
+  const update = await req.json() as {
+    message?: {
+      text?: string;
+      from?: { id: number };
+      chat: { id: number };
+    };
+  };
+
+  const message = update?.message;
+  if (!message?.text || message.from?.id !== OWNER_ID) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const chatId = message.chat.id;
+
+  try {
+    const cmd = await parseCommand(message.text);
+
+    if (cmd.action === "add_expense") {
+      const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
+      if (!user) throw new Error("User not found");
+
+      await prisma.expense.create({
+        data: {
+          amount: cmd.amount,
+          category: cmd.category,
+          source: "Telegram",
+          date: cmd.date,
+          description: cmd.description || "",
+          userId: user.id,
+        },
+      });
+
+      const categoryNote =
+        cmd.category === "Другое" ? "\n⚠️ Категория не распознана, использована «Другое»" : "";
+      const descLine = cmd.description ? `\n📝 ${cmd.description}` : "";
+      await sendMessage(
+        chatId,
+        `✅ Расход добавлен:\n💰 ${cmd.amount} ₽ — ${cmd.category}${descLine}\n📅 ${cmd.date}${categoryNote}`
+      );
+    } else if (cmd.action === "daily_summary") {
+      const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
+      if (!user) throw new Error("User not found");
+
+      const expenses = await prisma.expense.findMany({
+        where: { userId: user.id, date: cmd.date },
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (expenses.length === 0) {
+        await sendMessage(chatId, `📊 За ${cmd.date} расходов нет.`);
+      } else {
+        const total = expenses.reduce((s, e) => s + e.amount, 0);
+        const lines = expenses
+          .map((e) => `• ${e.category}: ${e.amount} ₽${e.description ? ` (${e.description})` : ""}`)
+          .join("\n");
+        await sendMessage(chatId, `📊 Расходы за ${cmd.date}:\n${lines}\n\nИтого: ${total} ₽`);
+      }
+    } else if (cmd.action === "monthly_summary") {
+      const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
+      if (!user) throw new Error("User not found");
+
+      const prefix = `${cmd.year}-${String(cmd.month).padStart(2, "0")}`;
+      const expenses = await prisma.expense.findMany({
+        where: { userId: user.id, date: { startsWith: prefix } },
+      });
+
+      const monthName = new Date(cmd.year, cmd.month - 1).toLocaleString("ru-RU", {
+        month: "long",
+        year: "numeric",
+      });
+
+      if (expenses.length === 0) {
+        await sendMessage(chatId, `📊 За ${monthName} расходов нет.`);
+      } else {
+        const total = expenses.reduce((s, e) => s + e.amount, 0);
+        const byCategory: Record<string, number> = {};
+        for (const e of expenses) {
+          byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+        }
+        const lines = Object.entries(byCategory)
+          .sort(([, a], [, b]) => b - a)
+          .map(([cat, amt]) => `• ${cat}: ${amt} ₽`)
+          .join("\n");
+        await sendMessage(chatId, `📊 Расходы за ${monthName}:\n${lines}\n\nИтого: ${total} ₽`);
+      }
+    } else {
+      await sendMessage(
+        chatId,
+        `❓ Не понял команду. Примеры:\n• «Купил продукты на 500 рублей»\n• «Потратил 200 на кофе в Старбаксе»\n• «Итоги за сегодня»\n• «Сводка за октябрь»`
+      );
+    }
+  } catch (e) {
+    console.error("Telegram bot error:", e);
+    await sendMessage(chatId, "❌ Произошла ошибка. Попробуйте ещё раз.");
+  }
+
+  return NextResponse.json({ ok: true });
+}

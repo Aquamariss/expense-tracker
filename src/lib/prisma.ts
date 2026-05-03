@@ -3,15 +3,16 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-// Render resolves Supabase hostname to IPv6 which it can't route outbound.
-// Force IPv4 so the pg pool connects via 0.0.0.0 instead of :::0.
-dns.setDefaultResultOrder("ipv4first");
-
 function makePrisma() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-  });
+    // Force IPv4: Render cannot route outbound IPv6, but Supabase DNS returns AAAA first.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lookup: (hostname: string, options: dns.LookupOptions, cb: any) => {
+      dns.lookup(hostname, { ...options, family: 4 }, cb);
+    },
+  } as ConstructorParameters<typeof Pool>[0]);
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }

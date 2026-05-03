@@ -25,6 +25,7 @@
     "dotenv": "^17.4.2",
     "next": "^16.2.4",
     "next-auth": "^4.24.14",
+    "openai": "^6.35.0",
     "pg": "^8.20.0",
     "postcss": "^8.5.13",
     "prisma": "^7.8.0",
@@ -32,6 +33,5 @@
     "react-dom": "^19.2.5",
     "tailwindcss": "^4.2.4",
     "typescript": "^5"
-  },
-  "devDependencies": {}
+  }
 }
