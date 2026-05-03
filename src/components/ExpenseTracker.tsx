@@ -24,7 +24,7 @@ interface ApiItem { id: string; name: string; }
 /* ── SVG icons ── */
 function AnchorIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", overflow: "hidden" }}>
       <circle cx="12" cy="5" r="2.5" />
       <line x1="12" y1="7.5" x2="12" y2="20" />
       <path d="M5 20a7 7 0 0 0 14 0" />
@@ -35,7 +35,7 @@ function AnchorIcon({ className }: { className?: string }) {
 
 function CompassIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", overflow: "hidden" }}>
       <circle cx="12" cy="12" r="10" />
       <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
     </svg>
@@ -44,7 +44,7 @@ function CompassIcon({ className }: { className?: string }) {
 
 function CardIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", overflow: "hidden" }}>
       <rect x="2" y="5" width="20" height="14" rx="2"/>
       <path d="M2 10h20"/>
     </svg>
@@ -196,31 +196,31 @@ export default function ExpenseTracker() {
           <WaveBackground />
         </div>
 
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-2">
           {/* Logo / title */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0 overflow-hidden">
+              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round" style={{ display: "block", overflow: "hidden" }}>
                 <path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9" />
                 <path d="M12 3c2.5 2 4 5 4 9" />
                 <path d="M3 12c2-2 5-3.5 9-3.5" />
                 <path d="M12 8c1 1.5 1.5 3 1.5 4" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">Трекер расходов</h1>
-              <p className="text-xs text-indigo-400 mt-0">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">Трекер расходов</h1>
+              <p className="text-xs text-indigo-400 mt-0 truncate hidden sm:block">
                 {session?.user?.email ?? "Учёт личных трат"}
               </p>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <button
               onClick={() => setShowSourceManager(true)}
               title="Источники средств"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
             >
               <CardIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Источники</span>
@@ -229,7 +229,7 @@ export default function ExpenseTracker() {
             <button
               onClick={() => setShowCategoryManager(true)}
               title="Управление категориями"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
             >
               <CompassIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Категории</span>
@@ -237,7 +237,7 @@ export default function ExpenseTracker() {
 
             <button
               onClick={() => setShowForm((v) => !v)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors duration-150 ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl font-semibold text-sm transition-colors duration-150 ${
                 showForm
                   ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   : "bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm shadow-indigo-200"
@@ -245,7 +245,7 @@ export default function ExpenseTracker() {
             >
               {showForm ? (
                 <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-4 h-4">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-4 h-4" style={{ display: "block", overflow: "hidden" }}>
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                   Отмена
@@ -263,7 +263,7 @@ export default function ExpenseTracker() {
               title="Выйти"
               className="flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-50 transition-colors duration-150"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ display: "block", overflow: "hidden" }}>
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
