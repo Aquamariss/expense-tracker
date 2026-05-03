@@ -72,7 +72,7 @@ async function parseCommand(text: string): Promise<ParsedCmd> {
       {
         role: "system",
         content: `Сегодня ${today}. Текущий месяц: ${currentYear}-${String(currentMonth).padStart(2, "0")}.
-Ты парсишь сообщения для трекера расходов на русском языке. Верни JSON одной из структур:
+Ты парсишь сообщения для трекера расходов на русском языке. Все суммы — в евро. Верни JSON одной из структур:
 1. {"action":"add_expense","amount":число,"category":"строка","description":"строка","date":"YYYY-MM-DD"}
 2. {"action":"daily_summary","date":"YYYY-MM-DD"}
 3. {"action":"monthly_summary","year":число,"month":число}
@@ -169,7 +169,7 @@ export async function POST(req: Request) {
       const descLine = cmd.description ? `\n📝 ${cmd.description}` : "";
       await sendMessage(
         chatId,
-        `✅ Расход добавлен:\n💰 ${cmd.amount} ₽ — ${cmd.category}${descLine}\n📅 ${cmd.date}${categoryNote}`
+        `✅ Расход добавлен:\n💰 ${cmd.amount} € — ${cmd.category}${descLine}\n📅 ${cmd.date}${categoryNote}`
       );
     } else if (cmd.action === "daily_summary") {
       const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
@@ -185,9 +185,9 @@ export async function POST(req: Request) {
       } else {
         const total = expenses.reduce((s, e) => s + e.amount, 0);
         const lines = expenses
-          .map((e) => `• ${e.category}: ${e.amount} ₽${e.description ? ` (${e.description})` : ""}`)
+          .map((e) => `• ${e.category}: ${e.amount} €${e.description ? ` (${e.description})` : ""}`)
           .join("\n");
-        await sendMessage(chatId, `📊 Расходы за ${cmd.date}:\n${lines}\n\nИтого: ${total} ₽`);
+        await sendMessage(chatId, `📊 Расходы за ${cmd.date}:\n${lines}\n\nИтого: ${total} €`);
       }
     } else if (cmd.action === "monthly_summary") {
       const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
@@ -213,9 +213,9 @@ export async function POST(req: Request) {
         }
         const lines = Object.entries(byCategory)
           .sort(([, a], [, b]) => b - a)
-          .map(([cat, amt]) => `• ${cat}: ${amt} ₽`)
+          .map(([cat, amt]) => `• ${cat}: ${amt} €`)
           .join("\n");
-        await sendMessage(chatId, `📊 Расходы за ${monthName}:\n${lines}\n\nИтого: ${total} ₽`);
+        await sendMessage(chatId, `📊 Расходы за ${monthName}:\n${lines}\n\nИтого: ${total} €`);
       }
     } else {
       await sendMessage(
