@@ -153,13 +153,14 @@ export async function POST(req: Request) {
       const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
       if (!user) throw new Error("User not found");
 
+      const descParts = ["Telegram", cmd.description].filter(Boolean);
       await prisma.expense.create({
         data: {
           amount: cmd.amount,
           category: cmd.category,
-          source: "Telegram",
+          source: "Банковские карты",
           date: cmd.date,
-          description: cmd.description || "",
+          description: descParts.join(": "),
           userId: user.id,
         },
       });
