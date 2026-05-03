@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { prisma } from "@/lib/prisma";
 
 const OWNER_ID = Number(process.env.TELEGRAM_OWNER_ID);
@@ -8,6 +8,25 @@ const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const OWNER_EMAIL = process.env.TELEGRAM_OWNER_EMAIL!;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+async function transcribeVoice(fileId: string): Promise<string> {
+  console.log("[telegram] downloading voice file_id:", fileId);
+  const infoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+  const info = await infoRes.json() as { result: { file_path: string } };
+  const filePath = info.result.file_path;
+
+  const audioRes = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`);
+  const audioBuffer = await audioRes.arrayBuffer();
+  console.log("[telegram] voice downloaded, size:", audioBuffer.byteLength);
+
+  const transcription = await openai.audio.transcriptions.create({
+    model: "whisper-1",
+    file: await toFile(Buffer.from(audioBuffer), "voice.ogg", { type: "audio/ogg" }),
+    language: "ru",
+  });
+  console.log("[telegram] transcription:", transcription.text);
+  return transcription.text;
+}
 
 async function sendMessage(chatId: number, text: string) {
   const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -96,6 +115,7 @@ export async function POST(req: Request) {
   const update = await req.json() as {
     message?: {
       text?: string;
+      voice?: { file_id: string; duration: number };
       from?: { id: number };
       chat: { id: number };
     };
@@ -104,8 +124,8 @@ export async function POST(req: Request) {
   console.log("[telegram] update:", JSON.stringify(update));
 
   const message = update?.message;
-  if (!message?.text) {
-    console.log("[telegram] no text, ignoring");
+  if (!message?.text && !message?.voice) {
+    console.log("[telegram] no text or voice, ignoring");
     return NextResponse.json({ ok: true });
   }
 
@@ -116,10 +136,18 @@ export async function POST(req: Request) {
   }
 
   const chatId = message.chat.id;
-  console.log("[telegram] processing message:", message.text);
+
+  let inputText: string;
+  if (message.voice) {
+    inputText = await transcribeVoice(message.voice.file_id);
+    console.log("[telegram] voice transcribed to:", inputText);
+  } else {
+    inputText = message.text!;
+  }
+  console.log("[telegram] processing message:", inputText);
 
   try {
-    const cmd = await parseCommand(message.text);
+    const cmd = await parseCommand(inputText);
 
     if (cmd.action === "add_expense") {
       const user = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
