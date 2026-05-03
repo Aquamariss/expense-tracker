@@ -220,7 +220,7 @@ export default function ExpenseTracker() {
             <button
               onClick={() => setShowSourceManager(true)}
               title="Источники средств"
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
             >
               <CardIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Источники</span>
@@ -229,7 +229,7 @@ export default function ExpenseTracker() {
             <button
               onClick={() => setShowCategoryManager(true)}
               title="Управление категориями"
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150"
             >
               <CompassIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Категории</span>
@@ -237,7 +237,7 @@ export default function ExpenseTracker() {
 
             <button
               onClick={() => setShowForm((v) => !v)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl font-semibold text-sm transition-colors duration-150 ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors duration-150 ${
                 showForm
                   ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   : "bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm shadow-indigo-200"
@@ -248,12 +248,12 @@ export default function ExpenseTracker() {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-4 h-4" style={{ display: "block", overflow: "hidden" }}>
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
-                  Отмена
+                  <span className="hidden sm:inline">Отмена</span>
                 </>
               ) : (
                 <>
                   <AnchorIcon className="w-4 h-4" />
-                  Добавить
+                  <span className="hidden sm:inline">Добавить</span>
                 </>
               )}
             </button>
@@ -261,7 +261,7 @@ export default function ExpenseTracker() {
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               title="Выйти"
-              className="flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-50 transition-colors duration-150"
+              className="flex items-center justify-center w-10 h-10 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-50 transition-colors duration-150"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" style={{ display: "block", overflow: "hidden" }}>
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
